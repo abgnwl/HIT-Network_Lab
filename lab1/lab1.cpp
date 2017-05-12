@@ -10,6 +10,8 @@
 #include <set>
 using namespace std;
 
+//#define test
+
 //transfer adress to another adress
 map<string, string> Transfer = 
 {
@@ -78,7 +80,9 @@ void replace(char buffer_c[], const string &oldstr, const string &newstr)
 
 int main(int argc, char* argv[])
 {
+#ifdef test
   freopen("output.txt","w",stdout);
+#endif
   printf("starting...\n");
   if(!InitSocket(ProxyServer, ProxyPort, ProxyServerAddr))
   {
@@ -175,12 +179,9 @@ bool InitSocket(SOCKET &proxySocket, const int socketPort, sockaddr_in &socketAd
 //************************************
 unsigned int __stdcall ProxyThread(void *proxyParam)
 {
-  
-  int timeout;
-  timeout = 3000;
-  setsockopt(((ProxyParam *)proxyParam)->clientSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-
+#ifdef test
   printf("[new thread]\n");
+#endif
   char Buffer[MAXSIZE];
   char *CacheBuffer;
   memset(Buffer, 0, MAXSIZE);
@@ -191,7 +192,9 @@ unsigned int __stdcall ProxyThread(void *proxyParam)
   recvSize = recv(((ProxyParam *)proxyParam)->clientSocket, Buffer, MAXSIZE, 0);
   if(recvSize <= 0)
   {
+#ifdef test
     printf("[client recv %d]\n", recvSize);
+#endif
     goto error;    // receive from client
   }
 
@@ -202,48 +205,94 @@ unsigned int __stdcall ProxyThread(void *proxyParam)
   memcpy(CacheBuffer, Buffer, recvSize);
 
   ParseHttpHead(CacheBuffer, httpHeader, Buffer);
-  
+#ifdef test
   //printf("[SEND]\n[/send]\n");
   printf("[SEND]\n%s\n[/send]\n", Buffer);
+#endif
   
   delete CacheBuffer;
   if(!ConnectToServer(&(((ProxyParam *)proxyParam)->serverSocket), httpHeader->host))
     goto error;
   
+#ifdef test
   printf("[connect] %s ok![/connect]\n", httpHeader->host);
+#endif
+  
+  // select
+  fd_set fdread;
+  timeval tv;
+
   //send the client request to server
   ret = send(((ProxyParam *)proxyParam)->serverSocket, Buffer, recvSize, 0);
+  if(ret < 0)
+  {
+    int error;
+    error = WSAGetLastError();
+#ifdef test
+    printf("[send to server error] %d\n", error);
+#endif
+    goto error;
+  }
   //wait for the buffer from server
-  setsockopt(((ProxyParam *)proxyParam)->serverSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-  
+  //setsockopt(((ProxyParam *)proxyParam)->serverSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+  //ioctlsocket(((ProxyParam *)proxyParam)->serverSocket,FIONBIO,(unsigned long *)&ul);
   for(; ; ) 
-  {  
-    recvSize = recv(((ProxyParam *)proxyParam)->serverSocket, Buffer, MAXSIZE, 0);
-    if(recvSize<=0)
+  { 
+    FD_ZERO(&fdread);
+    FD_SET(((ProxyParam *)proxyParam)->serverSocket, &fdread);
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
+
+    recvSize = select(0, &fdread, NULL, NULL, &tv);
+    //recvSize = recv(((ProxyParam *)proxyParam)->serverSocket, Buffer, MAXSIZE, 0);
+    if(recvSize < 0)
     {
-      printf("[server recv %d]\n", recvSize);
-      break;
+      int error;
+      error = WSAGetLastError();
+#ifdef test
+      printf("[recv from server error] %d\n", error);
+#endif
+      goto error;
     }
-    send(((ProxyParam *)proxyParam)->clientSocket, Buffer, recvSize, 0);
-    //Sleep(10);
-    printf("[one time] %d [/one time]\n", recvSize);
-    printf("[one recv]\n%s\n[/one recv]\n", Buffer);
-    //Sleep(20);
+    else if(recvSize == 0)
+    {
+#ifdef test
+      printf("[timeout]\n");
+      break;
+#endif
+    }
+    else
+    {
+      if(FD_ISSET(((ProxyParam *)proxyParam)->serverSocket, &fdread))
+      {
+        recvSize = recv(((ProxyParam *)proxyParam)->serverSocket, Buffer, MAXSIZE, 0);
+        if(recvSize == 0)
+          break;
+        send(((ProxyParam *)proxyParam)->clientSocket, Buffer, recvSize, 0);
+#ifdef test
+        printf("[one time] %d [/one time]\n", recvSize);
+        printf("[one recv]\n%s\n[/one recv]\n", Buffer);
+#endif
+      }
+    }
   }
 
+#ifdef test
   printf("[all over]\n");
-  
+#endif
   //错误处理
 error:
-  if(ret<0)
-    printf("error code: %d\n",ret);
+#ifdef test
   printf("[close socket]\n");
+#endif
   Sleep(200);
   closesocket(((ProxyParam *)proxyParam)->clientSocket);
   closesocket(((ProxyParam *)proxyParam)->serverSocket);
   delete proxyParam;
   //delete httpHeader;
+#ifdef test
   printf("[delete thread]\n");
+#endif
   _endthreadex(0);
   return ret;
 }
@@ -273,12 +322,16 @@ void ParseHttpHead(char buffer[], HttpHeader *httpHeader, char sendBuffer[])
     memcpy(httpHeader->method, "POST", 4);
     memcpy(httpHeader->url, &p[5], strlen(p) - 14);
   }
-  
+
+#ifdef test
   printf("recv client = [%s]\n", p);
+#endif
   p = strtok_r(NULL, delim, &ptr);
   while(p) 
   {
+#ifdef test
     printf("recv client = [%s]\n",p);
+#endif
     switch(p[0]){
       case 'H'://Host
         memcpy(httpHeader->host, &p[6], strlen(p) - 6);
