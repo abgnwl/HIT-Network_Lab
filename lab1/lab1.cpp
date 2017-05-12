@@ -10,13 +10,13 @@
 #include <set>
 using namespace std;
 
-//#define test
+#define test
 
 //transfer adress to another adress
 map<string, string> Transfer = 
 {
-  {"www.bilibili.com", "www.hit.edu.cn"},
-  {"www.fudan.edu.cn", "jwts.hit.edu.cn"},
+  {"www.bilibili.com", "www.hit.edu.cn" },
+  {"jwts.hit.edu.cn", "www.qq.com" },
   {"", ""}
 };
 
@@ -67,15 +67,32 @@ const int ProxyPort = 10240;
 void replace(char buffer_c[], const string &oldstr, const string &newstr)
 {
   string buffer = string(buffer_c);
+  /*
   int st = buffer.find("http://");
   int ed = buffer.find(" HTTP/");
   buffer = buffer.substr(0, st) + "http://" + newstr + "/" + buffer.substr(ed);
+  */
   while(buffer.find(oldstr) != string::npos)
   {
     int l = buffer.find(oldstr);
     buffer = buffer.substr(0,l) + newstr + buffer.substr(l+oldstr.length());
   }
   memcpy(buffer_c, buffer.c_str(), buffer.length() + 1);
+}
+
+// set Proxy-Connection to Connection
+void replaceProxyConnection(char buffer_c[])
+{
+  printf("[replace ProxyConnection]\n");
+  string buffer = string(buffer_c);
+  string proxyConnection = "Proxy-Connection: ";
+  while( buffer.find(proxyConnection) != string::npos)
+  {
+    int l = buffer.find(proxyConnection);
+    buffer = buffer.substr(0, l) + "Connection: " + buffer.substr(l + proxyConnection.length());
+  }
+  memcpy(buffer_c, buffer.c_str(), buffer.length() + 1);
+  printf("[replace ned]\n");
 }
 
 int main(int argc, char* argv[])
@@ -205,6 +222,8 @@ unsigned int __stdcall ProxyThread(void *proxyParam)
   memcpy(CacheBuffer, Buffer, recvSize);
 
   ParseHttpHead(CacheBuffer, httpHeader, Buffer);
+  
+  replaceProxyConnection(Buffer);
 #ifdef test
   //printf("[SEND]\n[/send]\n");
   printf("[SEND]\n%s\n[/send]\n", Buffer);
@@ -226,9 +245,9 @@ unsigned int __stdcall ProxyThread(void *proxyParam)
   ret = send(((ProxyParam *)proxyParam)->serverSocket, Buffer, recvSize, 0);
   if(ret < 0)
   {
+#ifdef test
     int error;
     error = WSAGetLastError();
-#ifdef test
     printf("[send to server error] %d\n", error);
 #endif
     goto error;
@@ -247,9 +266,9 @@ unsigned int __stdcall ProxyThread(void *proxyParam)
     //recvSize = recv(((ProxyParam *)proxyParam)->serverSocket, Buffer, MAXSIZE, 0);
     if(recvSize < 0)
     {
+#ifdef test
       int error;
       error = WSAGetLastError();
-#ifdef test
       printf("[recv from server error] %d\n", error);
 #endif
       goto error;
@@ -288,7 +307,7 @@ error:
   Sleep(200);
   closesocket(((ProxyParam *)proxyParam)->clientSocket);
   closesocket(((ProxyParam *)proxyParam)->serverSocket);
-  delete proxyParam;
+  delete (ProxyParam *)proxyParam;
   //delete httpHeader;
 #ifdef test
   printf("[delete thread]\n");
