@@ -80,21 +80,6 @@ void replace(char buffer_c[], const string &oldstr, const string &newstr)
   memcpy(buffer_c, buffer.c_str(), buffer.length() + 1);
 }
 
-// set Proxy-Connection to Connection
-void replaceProxyConnection(char buffer_c[])
-{
-  printf("[replace ProxyConnection]\n");
-  string buffer = string(buffer_c);
-  string proxyConnection = "Proxy-Connection: ";
-  while( buffer.find(proxyConnection) != string::npos)
-  {
-    int l = buffer.find(proxyConnection);
-    buffer = buffer.substr(0, l) + "Connection: " + buffer.substr(l + proxyConnection.length());
-  }
-  memcpy(buffer_c, buffer.c_str(), buffer.length() + 1);
-  printf("[replace ned]\n");
-}
-
 int main(int argc, char* argv[])
 {
 #ifdef test
@@ -223,7 +208,6 @@ unsigned int __stdcall ProxyThread(void *proxyParam)
 
   ParseHttpHead(CacheBuffer, httpHeader, Buffer);
   
-  replaceProxyConnection(Buffer);
 #ifdef test
   //printf("[SEND]\n[/send]\n");
   printf("[SEND]\n%s\n[/send]\n", Buffer);
@@ -259,7 +243,7 @@ unsigned int __stdcall ProxyThread(void *proxyParam)
   { 
     FD_ZERO(&fdread);
     FD_SET(((ProxyParam *)proxyParam)->serverSocket, &fdread);
-    tv.tv_sec = 2;
+    tv.tv_sec = 1;
     tv.tv_usec = 0;
 
     recvSize = select(0, &fdread, NULL, NULL, &tv);
@@ -375,6 +359,7 @@ void ParseHttpHead(char buffer[], HttpHeader *httpHeader, char sendBuffer[])
   {
     printf("[BAN] %s \n",httpHeader->host);
     memset(httpHeader->host, 0, sizeof(httpHeader->host));
+    //replace(sendBuffer, string(httpHeader->host), "");
   }
   else if(Transfer.find(string(httpHeader->host)) != Transfer.end())
   {
@@ -397,6 +382,7 @@ void ParseHttpHead(char buffer[], HttpHeader *httpHeader, char sendBuffer[])
 //************************************
 bool ConnectToServer(SOCKET *serverSocket, char host[])
 {
+  printf("[connect server host] = %s\n", host);
   sockaddr_in serverAddr;
   serverAddr.sin_family = AF_INET;
   serverAddr.sin_port = htons(HTTP_PORT);
