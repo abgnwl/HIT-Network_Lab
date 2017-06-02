@@ -1,0 +1,13 @@
+﻿http://gaia.cs.umass.edu/Wireshark-labs/alice.txt
+
+变更为
+
+http://gaia.cs.umass.edu/wireshark-labs/alice.txt
+
+
+
+http://gaia.cs.umass.edu/Wireshark-labs/TCP-Wireshark-file1.html
+
+变更为
+
+http://gaia.cs.umass.edu/wireshark-labs/TCP-wireshark-file1.html
