@@ -20,3 +20,7 @@ life is too short to program in C++
 * 使用Wireshark分析HTTP、TCP、IP报文段
 * 使用PingPlotter发送不同TTL的ICMP echo请求信息
 * 分别为HTTP GET、带有IF-MODIFIED-SINCE的HTTP GET、使用TCP和HTTP POST上传txt、使用PingPlotter发送ICMP echo请求信息时，Wireshark抓到的包
+
+## Lab8
+* 使用思科模拟器搭建网络
+* 注意vlan的配置和路由表的配置
